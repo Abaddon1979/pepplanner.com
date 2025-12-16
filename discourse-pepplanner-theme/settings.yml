@@ -1,0 +1,4 @@
+pepplanner_url:
+  default: "https://pepplanner.com"
+  type: string
+  description: "URL to your Pepplanner application"

@@ -1,0 +1,7 @@
+{
+    "name": "Pepplanner",
+    "about_url": "https://github.com/your-repo/discourse-pepplanner-theme",
+    "license_url": "https://github.com/your-repo/discourse-pepplanner-theme/blob/main/LICENSE",
+    "component": true,
+    "minimum_discourse_version": "2.7.0"
+}

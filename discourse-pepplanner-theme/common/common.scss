@@ -1,0 +1,105 @@
+/* Pepplanner Theme Component Styles */
+
+/* Header Icons */
+.pepplanner-header-icon {
+    display: inline-flex !important;
+    align-items: center;
+    margin-right: 4px;
+}
+
+.pepplanner-header-icon a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+}
+
+.pepplanner-header-icon a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.pepplanner-header-icon svg {
+    width: 18px;
+    height: 18px;
+}
+
+/* Modal Overlay */
+.pepplanner-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    backdrop-filter: blur(4px);
+}
+
+/* Modal Container */
+.pepplanner-modal-container {
+    background: #09090b;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 1200px;
+    height: 85vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    border: 1px solid #27272a;
+    overflow: hidden;
+}
+
+/* Modal Header */
+.pepplanner-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #27272a;
+    background: #0f0f12;
+}
+
+.pepplanner-modal-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #fff;
+}
+
+.pepplanner-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #a1a1aa;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: all 0.2s;
+}
+
+.pepplanner-modal-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+/* Modal Iframe */
+.pepplanner-modal-iframe {
+    flex: 1;
+    width: 100%;
+    border: none;
+    background: #09090b;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .pepplanner-modal-container {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        border-radius: 0;
+    }
+}
