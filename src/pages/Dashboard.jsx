@@ -42,7 +42,18 @@ import {
     isToday
 } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
-import { getDoses, createDose, createBatchDoses, updateDose } from '../services/api';
+import { getDoses, createDose, createBatchDoses, updateDose, deleteDose } from '../services/api';
+
+// Helper to parse dates from API without timezone shift
+// Converts "2025-12-18T00:00:00.000Z" -> Local Date for Dec 18th
+const parseApiDate = (dateString) => {
+    if (!dateString) return new Date();
+    // Take the date part only (YYYY-MM-DD)
+    const datePart = dateString.split('T')[0];
+    const [year, month, day] = datePart.split('-').map(Number);
+    // Create date using local constructor (months are 0-indexed)
+    return new Date(year, month - 1, day);
+};
 
 export default function Dashboard() {
     const { currentUser } = useAuth();
@@ -164,6 +175,19 @@ export default function Dashboard() {
         }
     };
 
+    const handleDeleteDose = async () => {
+        if (!selectedDose) return;
+        if (!window.confirm('Are you sure you want to delete this dose?')) return;
+
+        try {
+            await deleteDose(selectedDose.id);
+            setDoses(prev => prev.filter(d => d.id !== selectedDose.id));
+            setViewDoseModal(false);
+        } catch (error) {
+            console.error("Error deleting dose: ", error);
+        }
+    };
+
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
     const calendarStart = startOfWeek(monthStart);
@@ -186,10 +210,10 @@ export default function Dashboard() {
         return '#ef4444'; // Red (5+)
     };
 
-    const dayDoses = doses.filter(d => isSameDay(new Date(d.date), selectedDate));
+    const dayDoses = doses.filter(d => isSameDay(parseApiDate(d.date), selectedDate));
 
     return (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
 
 
             <Paper sx={{
@@ -347,7 +371,7 @@ export default function Dashboard() {
                                         const inMonth = isSameMonth(date, monthStart);
                                         const selected = isSameDay(date, selectedDate);
                                         const today = isToday(date);
-                                        const dailyDoses = doses.filter(d => isSameDay(new Date(d.date), date));
+                                        const dailyDoses = doses.filter(d => isSameDay(parseApiDate(d.date), date));
                                         const hasDoses = dailyDoses.length > 0;
                                         const incompleteCount = dailyDoses.filter(d => !d.completed).length;
 
@@ -358,7 +382,9 @@ export default function Dashboard() {
                                                 sx={{
                                                     p: { xs: 0.5, sm: 1.5 },
                                                     pt: { xs: 1, sm: 1.5 },
-                                                    height: { sm: 150 }, // Fixed height for desktop
+                                                    height: { xs: 100, sm: 'auto' },
+                                                    minHeight: 0,
+                                                    flex: 1,
                                                     cursor: 'pointer',
                                                     bgcolor: selected ? 'rgba(99, 102, 241, 0.05)' : 'transparent',
                                                     border: { xs: 'none', sm: '1px solid' },
@@ -443,7 +469,7 @@ export default function Dashboard() {
                         {weeks.find(w => w.some(d => isSameDay(d, new Date())))?.map((date, di) => {
                             const isSelected = isSameDay(date, selectedDate);
                             const isTodayDate = isToday(date);
-                            const dailyDoses = doses.filter(d => isSameDay(new Date(d.date), date));
+                            const dailyDoses = doses.filter(d => isSameDay(parseApiDate(d.date), date));
 
                             return (
                                 <Box
@@ -512,13 +538,13 @@ export default function Dashboard() {
 
                             {/* Daily Doses List */}
                             <Stack spacing={2}>
-                                {doses.filter(d => isSameDay(new Date(d.date), selectedDate)).length === 0 ? (
+                                {doses.filter(d => isSameDay(parseApiDate(d.date), selectedDate)).length === 0 ? (
                                     <Box sx={{ p: 4, border: '1px dashed rgba(255,255,255,0.1)', borderRadius: 2, textAlign: 'center' }}>
                                         <Typography color="text.secondary">No doses scheduled for this day.</Typography>
                                         <Button startIcon={<AddIcon />} size="small" sx={{ mt: 2 }} onClick={() => setOpenModal(true)}>Add Dose</Button>
                                     </Box>
                                 ) : (
-                                    doses.filter(d => isSameDay(new Date(d.date), selectedDate)).map(dose => (
+                                    doses.filter(d => isSameDay(parseApiDate(d.date), selectedDate)).map(dose => (
                                         <Box key={dose.id} sx={{
                                             p: 2,
                                             borderRadius: 2,
@@ -720,7 +746,7 @@ export default function Dashboard() {
                             </Box>
                             <Box>
                                 <Typography variant="caption" color="text.secondary">Date</Typography>
-                                <Typography variant="body1">{format(new Date(selectedDose.date), 'PPP')}</Typography>
+                                <Typography variant="body1">{format(parseApiDate(selectedDose.date), 'PPP')}</Typography>
                             </Box>
                             <TextField
                                 label="Notes"
@@ -734,9 +760,12 @@ export default function Dashboard() {
                         </Box>
                     )}
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setViewDoseModal(false)} color="inherit">Close</Button>
-                    <Button onClick={handleSaveNote} variant="contained">Save Note</Button>
+                <DialogActions sx={{ p: 2, justifyContent: 'space-between' }}>
+                    <Button onClick={handleDeleteDose} color="error">Delete</Button>
+                    <Box>
+                        <Button onClick={() => setViewDoseModal(false)} color="inherit" sx={{ mr: 1 }}>Close</Button>
+                        <Button onClick={handleSaveNote} variant="contained">Save Note</Button>
+                    </Box>
                 </DialogActions>
             </Dialog>
         </Box>

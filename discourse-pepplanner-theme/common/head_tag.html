@@ -1,5 +1,5 @@
 <script type="text/discourse-plugin" version="0.8">
-const PEPPLANNER_URL = settings.pepplanner_url || 'https://pepplanner.com';
+const PEPPLANNER_URL = 'https://www.pepplanner.com';
 
 api.onPageChange(() => {
     // Don't re-inject if already present
@@ -29,7 +29,7 @@ api.onPageChange(() => {
     `;
     calcBtn.querySelector('a').addEventListener('click', (e) => {
         e.preventDefault();
-        openPepplannerModal(PEPPLANNER_URL + '/calculator' + ssoParams, 'Peptide Calculator');
+        openPepplannerModal(PEPPLANNER_URL + '/calculator' + ssoParams, 'Peptide Calculator', 'calculator');
     });
 
     // Create Calendar icon
@@ -44,7 +44,7 @@ api.onPageChange(() => {
     `;
     calBtn.querySelector('a').addEventListener('click', (e) => {
         e.preventDefault();
-        openPepplannerModal(PEPPLANNER_URL + ssoParams, 'Pepplanner Calendar');
+        openPepplannerModal(PEPPLANNER_URL + ssoParams, 'Pepplanner Calendar', 'calendar');
     });
 
     // Insert icons
@@ -52,17 +52,20 @@ api.onPageChange(() => {
     headerIcons.prepend(calcBtn);
 });
 
-// Modal function
-function openPepplannerModal(url, title) {
+// Modal function with size variant
+function openPepplannerModal(url, title, type) {
     // Remove existing modal if any
     const existing = document.querySelector('.pepplanner-modal-overlay');
     if (existing) existing.remove();
+
+    // Size class based on type
+    const sizeClass = type === 'calculator' ? 'pepplanner-modal-calculator' : '';
 
     // Create modal overlay
     const overlay = document.createElement('div');
     overlay.className = 'pepplanner-modal-overlay';
     overlay.innerHTML = `
-        <div class="pepplanner-modal-container">
+        <div class="pepplanner-modal-container ${sizeClass}">
             <div class="pepplanner-modal-header">
                 <span class="pepplanner-modal-title">${title}</span>
                 <button class="pepplanner-modal-close">&times;</button>

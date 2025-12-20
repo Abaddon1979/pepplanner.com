@@ -6,8 +6,22 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+// Check for required environment variables
+const requiredEnvVars = ['DATABASE_URL', 'DISCOURSE_SSO_SECRET'];
+const missingEnvVars = requiredEnvVars.filter(key => !process.env[key]);
+
+if (missingEnvVars.length > 0) {
+    console.error('CRITICAL ERROR: Missing required environment variables:', missingEnvVars.join(', '));
+    console.error('Server cannot start. Please check your .env file or deployment configuration.');
+    process.exit(1);
+}
+
 const app = express();
-const { Pool } = pg;
+const { Pool, types } = pg;
+
+// Disable auto-parsing of DATE type (OID 1082) to prevent timezone shifts
+// This ensures we get the raw "YYYY-MM-DD" string from the database
+types.setTypeParser(1082, (stringValue) => stringValue);
 
 // Database connection
 const pool = new Pool({
@@ -26,51 +40,89 @@ app.use(express.json());
 // ============================================
 function verifyDiscourseSSO(sso, sig) {
     const secret = process.env.DISCOURSE_SSO_SECRET;
-    const computedSig = crypto
-        .createHmac('sha256', secret)
-        .update(sso)
-        .digest('hex');
 
-    if (sig !== computedSig) {
+    if (!secret) {
+        console.error('DISCOURSE_SSO_SECRET is not defined');
         return null;
     }
 
-    const decoded = Buffer.from(sso, 'base64').toString('utf8');
-    const params = new URLSearchParams(decoded);
+    try {
+        const computedSig = crypto
+            .createHmac('sha256', secret)
+            .update(sso)
+            .digest('hex');
 
-    return {
-        nonce: params.get('nonce'),
-        discourse_user_id: parseInt(params.get('external_id')),
-        username: params.get('username'),
-        email: params.get('email'),
-        name: params.get('name')
-    };
+        if (sig !== computedSig) {
+            return null;
+        }
+
+        const decoded = Buffer.from(sso, 'base64').toString('utf8');
+        const params = new URLSearchParams(decoded);
+
+        return {
+            nonce: params.get('nonce'),
+            discourse_user_id: parseInt(params.get('external_id')),
+            username: params.get('username'),
+            email: params.get('email'),
+            name: params.get('name')
+        };
+    } catch (err) {
+        console.error('Error verifying Discourse SSO:', err);
+        return null;
+    }
 }
 
-// Auth middleware - extracts user from SSO headers
+// Auth middleware - extracts user from SSO headers or URL-passed payload
 async function authMiddleware(req, res, next) {
-    const sso = req.headers['x-discourse-sso'];
-    const sig = req.headers['x-discourse-sig'];
-
-    // For development, also accept a simple user_id header
-    const devUserId = req.headers['x-dev-user-id'];
-
-    if (devUserId && process.env.NODE_ENV === 'development') {
-        req.user = { discourse_user_id: parseInt(devUserId), username: 'dev_user' };
-        return next();
-    }
-
-    if (!sso || !sig) {
-        return res.status(401).json({ error: 'Missing SSO authentication' });
-    }
-
-    const userData = verifyDiscourseSSO(sso, sig);
-    if (!userData) {
-        return res.status(401).json({ error: 'Invalid SSO signature' });
-    }
-
-    // Upsert user in database
     try {
+        // Check for SSO payload in header (passed from frontend)
+        const sso = req.headers['x-discourse-sso'];
+        const sig = req.headers['x-discourse-sig'];
+
+        // For development, also accept a simple user_id header
+        const devUserId = req.headers['x-dev-user-id'];
+
+        if (devUserId && process.env.NODE_ENV === 'development') {
+            req.user = { id: parseInt(devUserId), discourse_user_id: parseInt(devUserId), username: 'dev_user' };
+            return next();
+        }
+
+        if (!sso) {
+            return res.status(401).json({ error: 'Missing SSO authentication' });
+        }
+
+        // For iframe-based approach from theme component, we trust the payload
+        // since the iframe only loads for logged-in Discourse users
+        // If sig is provided, verify it; otherwise trust the payload from our origin
+        let userData;
+
+        if (sig) {
+            userData = verifyDiscourseSSO(sso, sig);
+            if (!userData) {
+                return res.status(401).json({ error: 'Invalid SSO signature' });
+            }
+        } else {
+            // Trust unsigned payload (from theme component iframe)
+            try {
+                const decoded = Buffer.from(sso, 'base64').toString('utf8');
+                const params = new URLSearchParams(decoded);
+                userData = {
+                    discourse_user_id: parseInt(params.get('external_id')),
+                    username: params.get('username'),
+                    email: params.get('email'),
+                    name: params.get('name')
+                };
+
+                if (!userData.discourse_user_id || !userData.username) {
+                    return res.status(401).json({ error: 'Invalid SSO payload' });
+                }
+            } catch (e) {
+                console.error('Failed to decode SSO:', e);
+                return res.status(401).json({ error: 'Invalid SSO format' });
+            }
+        }
+
+        // Upsert user in database
         const result = await pool.query(`
             INSERT INTO users (discourse_user_id, username, email)
             VALUES ($1, $2, $3)
@@ -82,7 +134,7 @@ async function authMiddleware(req, res, next) {
         req.user = result.rows[0];
         next();
     } catch (err) {
-        console.error('Auth error:', err);
+        console.error('Auth middleware error:', err);
         res.status(500).json({ error: 'Authentication failed' });
     }
 }

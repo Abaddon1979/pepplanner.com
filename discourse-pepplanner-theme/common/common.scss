@@ -40,18 +40,23 @@
     backdrop-filter: blur(4px);
 }
 
-/* Modal Container */
+/* Modal Container - Base */
 .pepplanner-modal-container {
     background: #09090b;
     border-radius: 12px;
-    width: 90%;
-    max-width: 1200px;
+    width: 1200px;
+    max-width: 95%;
     height: 85vh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     border: 1px solid #27272a;
     overflow: hidden;
+}
+
+/* Calculator Modal - Narrower */
+.pepplanner-modal-container.pepplanner-modal-calculator {
+    width: 725px;
 }
 
 /* Modal Header */
@@ -90,6 +95,7 @@
 .pepplanner-modal-iframe {
     flex: 1;
     width: 100%;
+    height: 100%;
     border: none;
     background: #09090b;
 }

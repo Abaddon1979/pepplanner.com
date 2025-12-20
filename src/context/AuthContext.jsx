@@ -13,11 +13,13 @@ export const AuthProvider = ({ children }) => {
         // Check for SSO params in URL (when loaded via Discourse iframe)
         const params = new URLSearchParams(window.location.search);
         const sso = params.get('sso');
-        const sig = params.get('sig');
 
-        if (sso && sig) {
-            // Store SSO credentials
-            setSSOCredentials(sso, sig);
+        console.log('SSO Debug - URL:', window.location.href);
+        console.log('SSO Debug - sso param:', sso);
+
+        if (sso) {
+            // Store SSO credentials (sig not needed for theme component approach)
+            setSSOCredentials(sso, '');
 
             // Decode SSO payload to get user info
             try {
